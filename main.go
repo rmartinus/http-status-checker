@@ -1,27 +1,35 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
-	urls := []string{"https://golang.org/", "https://www.google.com.au/"}
+	file, err := os.Open("urls.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
 
-	for _, url := range urls {
-		go checkStatus(url)
+	fs := bufio.NewScanner(file)
+	for fs.Scan() {
+		go checkStatus(fs.Text())
 	}
 
 	fmt.Scanln()
-	fmt.Println("done")
+	fmt.Println("DONE")
 }
 
 func checkStatus(url string) {
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Printf("%v - ERROR: %v\n", url, err)
+		log.Printf("%v - ERROR: %v\n", url, err)
 		return
 	}
 
-	fmt.Printf("%v - %v\n", url, resp.Status)
+	log.Printf("%v - %v\n", url, resp.Status)
 }
