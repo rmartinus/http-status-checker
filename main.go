@@ -9,8 +9,11 @@ func main() {
 	urls := []string{"https://golang.org/", "https://www.google.com.au/"}
 
 	for _, url := range urls {
-		checkStatus(url)
+		go checkStatus(url)
 	}
+
+	fmt.Scanln()
+	fmt.Println("done")
 }
 
 func checkStatus(url string) {
