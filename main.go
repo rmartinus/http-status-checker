@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,20 +15,40 @@ func main() {
 	defer file.Close()
 
 	fs := bufio.NewScanner(file)
-	for fs.Scan() {
-		go checkStatus(fs.Text())
-	}
+	checkStatus(fs)
 
-	fmt.Scanln()
-	fmt.Println("DONE")
+	log.Println("Done")
 }
 
-func checkStatus(url string) {
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Printf("%v - ERROR: %v\n", url, err)
-		return
+func checkStatus(fs *bufio.Scanner) {
+	jobs := make(chan string)
+	done := make(chan bool)
+
+	go ping(done, jobs)
+
+	for fs.Scan() {
+		url := fs.Text()
+		jobs <- url
 	}
 
-	log.Printf("%v - %v\n", url, resp.Status)
+	close(jobs)
+	<-done
+}
+
+func ping(done chan bool, jobs chan string) {
+	for {
+		url, more := <-jobs
+		if more {
+			resp, err := http.Get(url)
+			if err != nil {
+				log.Printf("%v - ERROR: %v\n", url, err)
+				continue
+			}
+
+			log.Printf("%v - %v\n", url, resp.Status)
+		} else {
+			done <- true
+			return
+		}
+	}
 }
