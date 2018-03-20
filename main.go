@@ -19,9 +19,9 @@ func main() {
 func checkStatus(url string) {
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("%v - ERROR: %v\n", url, err)
 		return
 	}
 
-	fmt.Println(url, resp.Status)
+	fmt.Printf("%v - %v\n", url, resp.Status)
 }
