@@ -34,7 +34,7 @@ func ping(url string, ch chan string) {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("%v - ERROR: %v\n", url, err)
+		ch <- fmt.Sprintf("%v - ERROR: %v\n", url, err)
 		return
 	}
 
