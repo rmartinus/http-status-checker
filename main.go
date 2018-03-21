@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,40 +16,27 @@ func main() {
 	defer file.Close()
 
 	fs := bufio.NewScanner(file)
-	checkStatus(fs)
+	ch := make(chan string)
+	n := 0
+	for fs.Scan() {
+		go ping(fs.Text(), ch)
+		n = n + 1
+	}
 
+	for i := 0; i < n; i++ {
+		log.Print(<-ch)
+	}
 	log.Println("Done")
 }
 
-func checkStatus(fs *bufio.Scanner) {
-	jobs := make(chan string)
-	done := make(chan bool)
+func ping(url string, ch chan string) {
+	log.Printf("Pinging %v", url)
 
-	go ping(done, jobs)
-
-	for fs.Scan() {
-		url := fs.Text()
-		jobs <- url
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("%v - ERROR: %v\n", url, err)
+		return
 	}
 
-	close(jobs)
-	<-done
-}
-
-func ping(done chan bool, jobs chan string) {
-	for {
-		url, more := <-jobs
-		if more {
-			resp, err := http.Get(url)
-			if err != nil {
-				log.Printf("%v - ERROR: %v\n", url, err)
-				continue
-			}
-
-			log.Printf("%v - %v\n", url, resp.Status)
-		} else {
-			done <- true
-			return
-		}
-	}
+	ch <- fmt.Sprintf("%v - %v\n", url, resp.Status)
 }
