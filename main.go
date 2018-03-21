@@ -2,11 +2,15 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 )
+
+type pingStatus struct {
+	url    string
+	status string
+}
 
 func main() {
 	file, err := os.Open("urls.txt")
@@ -16,7 +20,7 @@ func main() {
 	defer file.Close()
 
 	fs := bufio.NewScanner(file)
-	ch := make(chan string)
+	ch := make(chan *pingStatus)
 	n := 0
 	for fs.Scan() {
 		go ping(fs.Text(), ch)
@@ -24,19 +28,23 @@ func main() {
 	}
 
 	for i := 0; i < n; i++ {
-		log.Print(<-ch)
+		pingStatus := <-ch
+		log.Printf("%v - %v", pingStatus.url, pingStatus.status)
 	}
 	log.Println("Done")
 }
 
-func ping(url string, ch chan string) {
+func ping(url string, ch chan *pingStatus) {
+	ps := &pingStatus{url: url}
 	log.Printf("Pinging %v", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		ch <- fmt.Sprintf("%v - ERROR: %v\n", url, err)
+		ps.status = err.Error()
+		ch <- ps
 		return
 	}
 
-	ch <- fmt.Sprintf("%v - %v\n", url, resp.Status)
+	ps.status = resp.Status
+	ch <- ps
 }
