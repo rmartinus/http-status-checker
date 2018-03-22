@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 type pingStatus struct {
@@ -13,30 +14,44 @@ type pingStatus struct {
 }
 
 func main() {
-	file, err := os.Open("urls.txt")
+	ch := make(chan *pingStatus)
+	urls, _ := readLines("urls.txt")
+
+	for _, url := range urls {
+		go ping(url, ch)
+	}
+
+	for {
+		pingStatus := <-ch
+		go func(url string) {
+			time.Sleep(5 * time.Second)
+			ping(url, ch)
+		}(pingStatus.url)
+
+		log.Printf("%v - %v", pingStatus.url, pingStatus.status)
+	}
+}
+
+func readLines(path string) ([]string, error) {
+	file, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
 	defer file.Close()
 
 	fs := bufio.NewScanner(file)
-	ch := make(chan *pingStatus)
-	n := 0
+	var urls []string
+
 	for fs.Scan() {
-		go ping(fs.Text(), ch)
-		n = n + 1
+		urls = append(urls, fs.Text())
 	}
 
-	for i := 0; i < n; i++ {
-		pingStatus := <-ch
-		log.Printf("%v - %v", pingStatus.url, pingStatus.status)
-	}
-	log.Println("Done")
+	return urls, nil
 }
 
 func ping(url string, ch chan *pingStatus) {
 	ps := &pingStatus{url: url}
-	log.Printf("Pinging %v", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
